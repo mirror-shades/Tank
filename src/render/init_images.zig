@@ -7,6 +7,10 @@ pub fn initImages(asset_manager: *AssetManager) !void {
         std.log.err("Failed to load goldfish texture: {}", .{err});
         return err;
     };
+    _ = asset_manager.loadTexture(Types.Asset_Names.DEADGOLDFISH) catch |err| {
+        std.log.err("Failed to load dead goldfish texture: {}", .{err});
+        return err;
+    };
     _ = asset_manager.loadTexture(Types.Asset_Names.GLASS) catch |err| {
         std.log.err("Failed to load glass texture: {}", .{err});
         return err;

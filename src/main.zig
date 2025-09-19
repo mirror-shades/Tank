@@ -8,7 +8,7 @@ const Constants = @import("types/constants.zig");
 const Input = @import("core/input.zig");
 
 pub fn main() !void {
-    c.InitWindow(Constants.WINDOW_WIDTH, Constants.WINDOW_HEIGHT, "wow");
+    c.InitWindow(Constants.WINDOW_WIDTH, Constants.WINDOW_HEIGHT, "The Tank");
     defer c.CloseWindow();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -18,8 +18,10 @@ pub fn main() !void {
     defer gameState.deinit();
 
     while (!c.WindowShouldClose()) {
-        const input = Input.handleInput(&gameState);
-        Game.updateGameState(&gameState, input);
-        Draw.draw(&gameState);
+        const should_render = Game.updateGameState(&gameState);
+        if (should_render) {
+            _ = Input.handleInput(&gameState);
+            Draw.draw(&gameState);
+        }
     }
 }

@@ -14,6 +14,7 @@ pub const AssetManager = struct {
         };
 
         self.asset_paths.put(Types.Asset_Names.GOLDFISH, "assets/fish/goldfish.png") catch {};
+        self.asset_paths.put(Types.Asset_Names.DEADGOLDFISH, "assets/fish/dead_goldfish.png") catch {};
         self.asset_paths.put(Types.Asset_Names.GLASS, "assets/tank/glass.png") catch {};
 
         return self;

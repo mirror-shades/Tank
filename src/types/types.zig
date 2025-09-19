@@ -6,7 +6,14 @@ const initImages = @import("../render/init_images.zig").initImages;
 
 pub const Asset_Names = enum {
     GOLDFISH,
+    DEADGOLDFISH,
     GLASS,
+};
+
+pub const Hunger = enum {
+    FULL,
+    HUNGRY,
+    STARVING,
 };
 
 pub const Species = enum {
@@ -51,23 +58,27 @@ pub const GameState = struct {
     frameCounter: u64,
     fishIdCounter: u32,
     fishFoodIdCounter: u32,
+    lastTime: f64,
     fishes: std.hash_map.AutoHashMap(u32, Fish),
     fishFoods: std.hash_map.AutoHashMap(u32, FishFood),
-    asset_manager: AssetManager,
+    corpses: std.hash_map.AutoHashMap(u32, Corpse),
+    assetManager: AssetManager,
 
     pub fn init(allocator: std.mem.Allocator) !GameState {
-        var asset_manager = AssetManager.init(allocator);
-        try initImages(&asset_manager);
+        var assetManager = AssetManager.init(allocator);
+        try initImages(&assetManager);
         var fishes = std.hash_map.AutoHashMap(u32, Fish).init(allocator);
         try fishes.put(0, Fish.new(Species.GOLDFISH));
         const fishFoods = std.hash_map.AutoHashMap(u32, FishFood).init(allocator);
-        return GameState{ .frameCounter = 0, .fishIdCounter = 0, .fishFoodIdCounter = 0, .fishes = fishes, .fishFoods = fishFoods, .asset_manager = asset_manager };
+        const corpses = std.hash_map.AutoHashMap(u32, Corpse).init(allocator);
+        return GameState{ .frameCounter = 0, .fishIdCounter = 0, .fishFoodIdCounter = 0, .lastTime = 0, .fishes = fishes, .fishFoods = fishFoods, .assetManager = assetManager, .corpses = corpses };
     }
 
     pub fn deinit(self: *GameState) void {
         self.fishes.deinit();
         self.fishFoods.deinit();
-        self.asset_manager.deinit();
+        self.assetManager.deinit();
+        self.corpses.deinit();
     }
 
     pub fn addFish(self: *GameState) void {
@@ -89,14 +100,31 @@ pub const GameState = struct {
     }
 };
 
+pub const Corpse = struct {
+    currentPosition: pair,
+    species: Species,
+    markForRemoval: bool,
+
+    pub fn new(coords: pair, species: Species) Corpse {
+        return Corpse{ .currentPosition = coords, .species = species, .markForRemoval = false };
+    }
+
+    pub fn float(self: *Corpse) void {
+        self.currentPosition.y -= 1;
+        if (self.currentPosition.y < -25) {
+            self.markForRemoval = true;
+        }
+    }
+};
+
 pub const Fish = struct {
     current_position: pair,
     next_position: pair,
 
     species: Species,
     lastAte: u64,
-    isHungry: bool,
-    lastMoved: u64,
+    hunger: Hunger,
+    dead: bool,
 
     pub fn new(_species: Species) Fish {
         const rand = std.crypto.random;
@@ -107,9 +135,21 @@ pub const Fish = struct {
             .next_position = pair{ .x = _x, .y = _y },
             .species = _species,
             .lastAte = 0,
-            .isHungry = true,
-            .lastMoved = 0,
+            .hunger = Hunger.FULL,
+            .dead = false,
         };
+    }
+
+    pub fn updateHunger(self: *Fish, gameState: *GameState) void {
+        if (self.hunger == Hunger.FULL and gameState.frameCounter - self.lastAte > 500) {
+            self.hunger = Hunger.HUNGRY;
+        }
+        if (self.hunger == Hunger.HUNGRY and gameState.frameCounter - self.lastAte > 1000) {
+            self.hunger = Hunger.STARVING;
+        }
+        if (self.hunger == Hunger.STARVING and gameState.frameCounter - self.lastAte > 1500) {
+            self.dead = true;
+        }
     }
 
     pub fn move(self: *Fish, gameState: *GameState, new_coords: pair) void {
@@ -138,7 +178,7 @@ pub const Fish = struct {
             }
             self.next_position = pair{ .x = newX, .y = newY };
         } else {
-            if (self.isHungry and gameState.foodExists()) {
+            if (self.hunger != Hunger.FULL and gameState.foodExists()) {
                 var fishFoodIterator = gameState.fishFoods.iterator();
                 var closestFoodKey: ?u32 = null;
                 var closestDistance: f32 = std.math.inf(f32);
@@ -165,7 +205,7 @@ pub const Fish = struct {
                             // Remove the food immediately using the key
                             _ = gameState.fishFoods.remove(closestFoodKey.?);
 
-                            self.isHungry = false; // Fish is no longer hungry
+                            self.hunger = Hunger.FULL; // Fish is no longer hungry
                             self.lastAte = gameState.frameCounter;
 
                             // Reset to a new random position after eating
@@ -186,11 +226,6 @@ pub const Fish = struct {
                         self.next_position = pair{ .x = newX, .y = newY };
                     }
                 }
-            }
-
-            // Make fish hungry again after some time (e.g., 300 frames = 5 seconds at 60fps)
-            if (!self.isHungry and gameState.frameCounter - self.lastAte > 300) {
-                self.isHungry = true;
             }
 
             // Always move toward the target (whether it's food or random position)
