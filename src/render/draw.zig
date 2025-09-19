@@ -19,7 +19,7 @@ fn drawFishes(fishes: *const std.hash_map.AutoHashMap(u32, Types.Fish), asset_ma
     var fishIterator = fishes.iterator();
     while (fishIterator.next()) |fishEntry| {
         const fish = fishEntry.value_ptr.*;
-        if (asset_manager.getTexture(fish.species)) |texture| {
+        if (asset_manager.getTexture(Types.Asset_Names.GOLDFISH)) |texture| {
             const movingRight = fish.current_position.x < fish.next_position.x;
             const width = texture.width;
             const height = texture.height;
@@ -63,7 +63,9 @@ fn drawBackground(asset_manager: *AssetManager) void {
 }
 
 fn drawForeground(asset_manager: *AssetManager) void {
-    _ = asset_manager;
+    if (asset_manager.getTexture(Types.Asset_Names.GLASS)) |texture| {
+        c.DrawTexture(texture, -30, -30, c.WHITE);
+    }
 }
 
 fn drawUI(asset_manager: *AssetManager) void {

@@ -10,7 +10,7 @@ pub fn updateGameState(gameState: *Types.GameState, input: c.InputState) void {
 
     var fishIterator = gameState.fishes.iterator();
     while (fishIterator.next()) |fishEntry| {
-        fishEntry.value_ptr.moveSlow();
+        fishEntry.value_ptr.move(gameState, fishEntry.value_ptr.next_position);
     }
 
     // Collect keys of items to remove
