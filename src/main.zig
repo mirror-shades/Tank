@@ -17,6 +17,9 @@ pub fn main() !void {
     var gameState = try Types.GameState.init(gpa.allocator());
     defer gameState.deinit();
 
+    gameState.addFish(Types.Species.GOLDFISH, -1, -1);
+    gameState.addFish(Types.Species.GOLDFISH, -1, -1);
+
     while (!c.WindowShouldClose()) {
         const should_render = Game.updateGameState(&gameState);
         if (should_render) {
